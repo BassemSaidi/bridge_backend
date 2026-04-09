@@ -16,7 +16,7 @@ class Voyage {
     } = voyageData;
 
     const [result] = await db.execute(
-      `INSERT INTO voyage (account_id, PaysD, villePD, PaysF, villePF, DateD, DateF, status, codeT) 
+      `INSERT INTO trips (account_id, PaysD, villePD, PaysF, villePF, DateD, DateF, status, codeT) 
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         account_id,
@@ -159,7 +159,7 @@ class Voyage {
     } = voyageData;
 
     const [result] = await db.execute(
-      `UPDATE voyage SET 
+      `UPDATE trips SET 
         PaysD = ?, villePD = ?, PaysF = ?, villePF = ?, 
         DateD = ?, DateF = ?, status = ?, codeT = ? 
        WHERE idV = ?`,
@@ -182,7 +182,7 @@ class Voyage {
   // Update voyage status
   static async updateStatus(idV, status) {
     const [result] = await db.execute(
-      'UPDATE voyage SET status = ? WHERE idV = ?',
+      'UPDATE trips SET status = ? WHERE idV = ?',
       [status, idV]
     );
     return result.affectedRows > 0;
