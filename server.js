@@ -29,7 +29,8 @@ app.use(cors({
     'http://localhost:5173',           // Vite dev server
     'http://localhost:3000',           // Alternative dev server
     'https://bridge-frontend-uqze.vercel.app',  // ✅ CORRECT production domain
-    'https://bridge-backend-42f8.onrender.com' // If needed
+    'https://bridge-backend-42f8.onrender.com',
+    'https://bridgetn.vercel.app' // If needed
   ],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
