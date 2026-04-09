@@ -37,7 +37,7 @@ class Account {
     const { nom, Tel1, Tel2W, Bio, voiture, pricePerKg, paysTrajet, guide, interdits } = data;
 
     const [result] = await db.execute(
-      `UPDATE Account SET 
+      `UPDATE account SET 
         nom = ?, Tel1 = ?, Tel2W = ?, Bio = ?, voiture = ?, 
         pricePerKg = ?, paysTrajet = ?, guide = ?, interdits = ? 
        WHERE id = ?`,

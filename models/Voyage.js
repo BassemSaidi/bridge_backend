@@ -115,7 +115,7 @@ class Voyage {
     const [rows] = await db.execute(
       `SELECT v.*, a.nom as account_name, a.voiture 
        FROM trips v 
-       JOIN Account a ON v.account_id = a.id 
+       JOIN account a ON v.account_id = a.id 
        ORDER BY v.DateD DESC`
     );
     
@@ -132,7 +132,7 @@ class Voyage {
     const [rows] = await db.execute(
       `SELECT v.*, a.nom as account_name, a.voiture 
        FROM trips v 
-       JOIN Account a ON v.account_id = a.id 
+       JOIN account a ON v.account_id = a.id 
        WHERE v.status IN ('SCHEDULED', 'IN_PROGRESS') 
        ORDER BY v.DateD ASC`
     );

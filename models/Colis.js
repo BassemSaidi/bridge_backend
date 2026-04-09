@@ -48,7 +48,7 @@ class Colis {
       `SELECT c.*, v.PaysD, v.PaysF, v.DateD, a.nom as transporteur_name 
        FROM colis c 
        JOIN trips v ON c.voyage_id = v.idV 
-       JOIN Account a ON v.account_id = a.id 
+       JOIN account a ON v.account_id = a.id 
        WHERE c.idCo = ?`,
       [idCo]
     );
@@ -79,7 +79,7 @@ class Colis {
       `SELECT c.*, v.PaysD, v.PaysF, v.DateD, a.nom as transporteur_name 
        FROM colis c 
        JOIN trips v ON c.voyage_id = v.idV 
-       JOIN Account a ON v.account_id = a.id 
+       JOIN account a ON v.account_id = a.id 
        ORDER BY c.created_at DESC`
     );
     
@@ -93,7 +93,7 @@ class Colis {
       `SELECT c.*, v.PaysD, v.PaysF, v.DateD, a.nom as transporteur_name 
        FROM colis c 
        JOIN trips v ON c.voyage_id = v.idV 
-       JOIN Account a ON v.account_id = a.id 
+       JOIN account a ON v.account_id = a.id 
        WHERE c.payementStatus = ? 
        ORDER BY c.created_at DESC`,
       [payementStatus]
@@ -238,7 +238,7 @@ class Colis {
       `SELECT c.*, v.PaysD, v.PaysF, a.nom as transporteur_name 
        FROM colis c 
        JOIN trips v ON c.voyage_id = v.idV 
-       JOIN Account a ON v.account_id = a.id 
+       JOIN account a ON v.account_id = a.id 
        WHERE c.nomS LIKE ? OR c.nomR LIKE ? OR c.TelS LIKE ? OR c.TelR LIKE ?
        ORDER BY c.created_at DESC`,
       [`%${searchTerm}%`, `%${searchTerm}%`, `%${searchTerm}%`, `%${searchTerm}%`]
