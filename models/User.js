@@ -12,7 +12,7 @@ class User {
     const hashedPassword = await bcrypt.hash(mdp, salt);
 
     const [result] = await db.execute(
-      'INSERT INTO Users (mail, mdp, role, created_at) VALUES (?, ?, ?, NOW())',
+      'INSERT INTO users (mail, mdp, role, created_at) VALUES (?, ?, ?, NOW())',
       [mail, hashedPassword, role]
     );
 

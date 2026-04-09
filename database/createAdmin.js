@@ -13,7 +13,7 @@ const createAdmin = async () => {
     
     // Insert admin user
     const [result] = await db.execute(
-      'INSERT INTO Users (mail, mdp, role) VALUES (?, ?, ?)',
+      'INSERT INTO users (mail, mdp, role) VALUES (?, ?, ?)',
       [adminEmail, hashedPassword, 'ADMIN']
     );
     
