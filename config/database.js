@@ -6,13 +6,19 @@ const pool = mysql.createPool({
   user: process.env.DB_USER || 'root',
   password: process.env.DB_PASSWORD || '',
   database: process.env.DB_NAME || 'bridgetn',
-  port: process.env.DB_PORT || 3306,
+  // 1. Updated default port to 4000 for TiDB
+  port: process.env.DB_PORT || 4000, 
   waitForConnections: true,
   connectionLimit: 10,
   queueLimit: 0,
-  acquireTimeout: 60000,
-  timeout: 60000,
-  reconnect: true
+  
+  // 2. 🔐 Added SSL configuration for TiDB Cloud
+  ssl: {
+    minVersion: 'TLSv1.2',
+    rejectUnauthorized: true
+  }
+  
+  // 3. Removed acquireTimeout, timeout, and reconnect to clear warnings
 });
 
 // Test database connection
