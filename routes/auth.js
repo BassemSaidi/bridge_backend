@@ -3,7 +3,8 @@ const {
   register, 
   login, 
   getMe, 
-  logout 
+  logout,
+  changePassword
 } = require('../controllers/authController');
 const { protect } = require('../middleware/auth');
 
@@ -16,5 +17,6 @@ router.post('/login', login);
 // Protected routes
 router.get('/me', protect, getMe);
 router.post('/logout', protect, logout);
+router.post('/change-password', protect, changePassword);
 
 module.exports = router;

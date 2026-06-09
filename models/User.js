@@ -75,8 +75,22 @@ class User {
     return result.affectedRows > 0;
   }
 
+  // Update password
+  static async updatePassword(id, newPassword) {
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(newPassword, salt);
+    const [result] = await db.execute(
+      'UPDATE users SET mdp = ? WHERE id = ?',
+      [hashedPassword, id]
+    );
+    return result.affectedRows > 0;
+  }
+
   // Delete user
   static async delete(id) {
+    if (!id || id === 'null' || id === null) {
+      return false;
+    }
     const [result] = await db.execute(
       'DELETE FROM users WHERE id = ?',
       [id]
