@@ -11,13 +11,13 @@ class Voyage {
       villePF = [], 
       DateD, 
       DateF, 
-      status = 'SCHEDULED', 
+      status = 'a arriver', 
       codeT 
     } = voyageData;
 
     const [result] = await db.execute(
-      `INSERT INTO trips (account_id, PaysD, villePD, PaysF, villePF, DateD, DateF, status, codeT) 
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO trips (account_id, PaysD, villePD, PaysF, villePF, DateD, DateF, status, codeT, current_city_index) 
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0)`,
       [
         account_id,
         PaysD,
@@ -76,6 +76,8 @@ class Voyage {
       // Parse cities fields safely
       voyage.villePD = this.parseCitiesField(voyage.villePD);
       voyage.villePF = this.parseCitiesField(voyage.villePF);
+      // Calculate current location based on current_city_index
+      voyage.current_location = this.getCurrentLocation(voyage);
       return voyage;
     }
     
@@ -96,7 +98,8 @@ class Voyage {
       const parsed = {
         ...voyage,
         villePD: this.parseCitiesField(voyage.villePD),
-        villePF: this.parseCitiesField(voyage.villePF)
+        villePF: this.parseCitiesField(voyage.villePF),
+        current_location: this.getCurrentLocation(voyage)
       };
       console.log('Parsed voyage', voyage.idV, ':', {
         original_villePD: voyage.villePD,
@@ -123,7 +126,8 @@ class Voyage {
     return rows.map(voyage => ({
       ...voyage,
       villePD: this.parseCitiesField(voyage.villePD),
-      villePF: this.parseCitiesField(voyage.villePF)
+      villePF: this.parseCitiesField(voyage.villePF),
+      current_location: this.getCurrentLocation(voyage)
     }));
   }
 
@@ -141,7 +145,28 @@ class Voyage {
     return rows.map(voyage => ({
       ...voyage,
       villePD: this.parseCitiesField(voyage.villePD),
-      villePF: this.parseCitiesField(voyage.villePF)
+      villePF: this.parseCitiesField(voyage.villePF),
+      current_location: this.getCurrentLocation(voyage)
+    }));
+  }
+
+  // Get active voyages by account ID
+  static async getActiveByAccountId(account_id) {
+    const [rows] = await db.execute(
+      `SELECT v.*, a.nom as account_name, a.voiture 
+       FROM trips v 
+       JOIN account a ON v.account_id = a.id 
+       WHERE v.account_id = ? AND v.status IN ('SCHEDULED', 'IN_PROGRESS') 
+       ORDER BY v.DateD ASC`,
+      [account_id]
+    );
+    
+    // Parse cities fields safely for all voyages
+    return rows.map(voyage => ({
+      ...voyage,
+      villePD: this.parseCitiesField(voyage.villePD),
+      villePF: this.parseCitiesField(voyage.villePF),
+      current_location: this.getCurrentLocation(voyage)
     }));
   }
 
@@ -155,25 +180,31 @@ class Voyage {
       DateD, 
       DateF, 
       status, 
-      codeT 
+      codeT,
+      current_city_index,
+      status_message
     } = voyageData;
 
+    // Build dynamic query based on provided fields
+    const fields = [];
+    const values = [];
+    
+    if (PaysD !== undefined) { fields.push('PaysD = ?'); values.push(PaysD); }
+    if (villePD !== undefined) { fields.push('villePD = ?'); values.push(JSON.stringify(villePD)); }
+    if (PaysF !== undefined) { fields.push('PaysF = ?'); values.push(PaysF); }
+    if (villePF !== undefined) { fields.push('villePF = ?'); values.push(JSON.stringify(villePF)); }
+    if (DateD !== undefined) { fields.push('DateD = ?'); values.push(DateD); }
+    if (DateF !== undefined) { fields.push('DateF = ?'); values.push(DateF); }
+    if (status !== undefined) { fields.push('status = ?'); values.push(status); }
+    if (codeT !== undefined) { fields.push('codeT = ?'); values.push(codeT); }
+    if (current_city_index !== undefined) { fields.push('current_city_index = ?'); values.push(current_city_index); }
+    if (status_message !== undefined) { fields.push('status_message = ?'); values.push(status_message); }
+    
+    values.push(idV);
+
     const [result] = await db.execute(
-      `UPDATE trips SET 
-        PaysD = ?, villePD = ?, PaysF = ?, villePF = ?, 
-        DateD = ?, DateF = ?, status = ?, codeT = ? 
-       WHERE idV = ?`,
-      [
-        PaysD,
-        JSON.stringify(villePD),
-        PaysF,
-        JSON.stringify(villePF),
-        DateD,
-        DateF,
-        status,
-        codeT,
-        idV
-      ]
+      `UPDATE trips SET ${fields.join(', ')} WHERE idV = ?`,
+      values
     );
 
     return result.affectedRows > 0;
@@ -216,6 +247,71 @@ class Voyage {
     
     const [rows] = await db.execute(query, params);
     return rows[0];
+  }
+
+  // Get current location based on current_city_index
+  static getCurrentLocation(voyage) {
+    const villePD = this.parseCitiesField(voyage.villePD);
+    const villePF = this.parseCitiesField(voyage.villePF);
+    const currentIndex = voyage.current_city_index || 0;
+    
+    // Build the route: villePD -> Douane -> Boat -> Douane -> villePF
+    const route = [];
+    
+    // Add departure cities
+    villePD.forEach(city => {
+      route.push({ type: 'city', name: city, country: voyage.PaysD });
+    });
+    
+    // Add customs before boat
+    route.push({ type: 'customs', name: 'Douane', country: voyage.PaysD });
+    
+    // Add boat
+    route.push({ type: 'boat', name: 'En Bateau', country: 'International' });
+    
+    // Add customs after boat
+    route.push({ type: 'customs', name: 'Douane', country: voyage.PaysF });
+    
+    // Add arrival cities
+    villePF.forEach(city => {
+      route.push({ type: 'city', name: city, country: voyage.PaysF });
+    });
+    
+    // Return current location or first location if index is out of bounds
+    if (currentIndex >= 0 && currentIndex < route.length) {
+      return route[currentIndex];
+    }
+    
+    return route[0] || { type: 'unknown', name: 'Unknown', country: 'Unknown' };
+  }
+
+  // Increment current city index
+  static async incrementCityIndex(idV) {
+    const [result] = await db.execute(
+      'UPDATE trips SET current_city_index = current_city_index + 1 WHERE idV = ?',
+      [idV]
+    );
+    return result.affectedRows > 0;
+  }
+
+  // Find voyage by tracking code
+  static async findByCode(codeT) {
+    const [rows] = await db.execute(
+      'SELECT * FROM trips WHERE codeT = ?',
+      [codeT]
+    );
+    
+    if (rows.length > 0) {
+      const voyage = rows[0];
+      // Parse cities fields safely
+      voyage.villePD = this.parseCitiesField(voyage.villePD);
+      voyage.villePF = this.parseCitiesField(voyage.villePF);
+      // Calculate current location based on current_city_index
+      voyage.current_location = this.getCurrentLocation(voyage);
+      return voyage;
+    }
+    
+    return null;
   }
 }
 

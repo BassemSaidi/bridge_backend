@@ -1,5 +1,6 @@
 const Account = require('../models/Account');
 const Voyage = require('../models/Voyage');
+const Trip = require('../models/Trip');
 
 // @desc    Get public account profile
 // @route   GET /api/public/account/:id
@@ -90,7 +91,67 @@ const getPublicTrips = async (req, res, next) => {
   }
 };
 
+// @desc    Get all upcoming trips
+// @route   GET /api/public/upcoming-trips
+// @access   Public
+const getAllUpcomingTrips = async (req, res, next) => {
+  try {
+    const db = require('../config/database');
+    
+    // Get all trips that are not arrived/completed
+    const [rows] = await db.execute(
+      `SELECT t.*, a.nom as account_name, a.voiture, a.pricePerKg 
+       FROM trips t 
+       JOIN account a ON t.account_id = a.id 
+       WHERE t.status NOT IN ('arrived', 'completed', 'CANCELLED')
+       ORDER BY t.DateD ASC`
+    );
+    
+    // Parse cities fields safely for all trips
+    const publicTrips = rows.map(trip => {
+      let villePD = [];
+      let villePF = [];
+      
+      try {
+        villePD = typeof trip.villePD === 'string' ? JSON.parse(trip.villePD || '[]') : trip.villePD || [];
+      } catch (e) {
+        villePD = [];
+      }
+      
+      try {
+        villePF = typeof trip.villePF === 'string' ? JSON.parse(trip.villePF || '[]') : trip.villePF || [];
+      } catch (e) {
+        villePF = [];
+      }
+      
+      return {
+        idV: trip.idV,
+        PaysD: trip.PaysD,
+        PaysF: trip.PaysF,
+        DateD: trip.DateD,
+        DateF: trip.DateF,
+        status: trip.status,
+        codeT: trip.codeT,
+        villePD: villePD,
+        villePF: villePF,
+        account_name: trip.account_name,
+        voiture: trip.voiture,
+        pricePerKg: trip.pricePerKg
+      };
+    });
+
+    res.status(200).json({
+      success: true,
+      count: publicTrips.length,
+      data: publicTrips
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   getPublicAccount,
-  getPublicTrips
+  getPublicTrips,
+  getAllUpcomingTrips
 };

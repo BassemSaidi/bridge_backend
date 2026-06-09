@@ -6,22 +6,27 @@ const {
   updateColis, 
   updatePaymentStatus, 
   deleteColis, 
-  getColisStats 
+  getColisStats,
+  acceptColisRequest,
+  refuseColisRequest,
+  getPendingRequestsCount,
+  getPendingRequests
 } = require('../controllers/colisController');
 const { protect, authorize } = require('../middleware/auth');
 
 const router = express.Router();
 
-// Apply protection to all routes
-router.use(protect);
-
 // Routes
-router.post('/', authorize('TRANSPORTEUR', 'ADMIN'), createColis);
-router.get('/', getAllColis);
-router.get('/stats', getColisStats);
-router.get('/:id', getColisById);
-router.put('/:id', authorize('TRANSPORTEUR', 'ADMIN'), updateColis);
-router.patch('/:id/payment', authorize('TRANSPORTEUR', 'ADMIN'), updatePaymentStatus);
-router.delete('/:id', authorize('TRANSPORTEUR', 'ADMIN'), deleteColis);
+router.post('/', createColis); // Public for demande status, protected for others
+router.get('/', protect, getAllColis);
+router.get('/stats', protect, getColisStats);
+router.get('/pending-count', protect, getPendingRequestsCount);
+router.get('/pending-requests', protect, getPendingRequests);
+router.get('/:id', protect, getColisById);
+router.put('/:id', protect, authorize('TRANSPORTEUR', 'ADMIN'), updateColis);
+router.patch('/:id/payment', protect, authorize('TRANSPORTEUR', 'ADMIN'), updatePaymentStatus);
+router.patch('/:id/accept', protect, authorize('TRANSPORTEUR', 'ADMIN'), acceptColisRequest);
+router.patch('/:id/refuse', protect, authorize('TRANSPORTEUR', 'ADMIN'), refuseColisRequest);
+router.delete('/:id', protect, authorize('TRANSPORTEUR', 'ADMIN'), deleteColis);
 
 module.exports = router;

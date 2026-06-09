@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { protect } = require('../middleware/auth');
+const { protect, authorize } = require('../middleware/auth');
 const {
   createTrip,
   getMyTrips,
@@ -27,7 +27,7 @@ router.post('/', createTrip);
 router.get('/', getMyTrips);
 
 // @route   GET /api/trips/all
-router.get('/all', getAllTrips);
+router.get('/all', authorize('ADMIN'), getAllTrips);
 
 // @route   GET /api/trips/by-code/:code (Public)
 router.get('/by-code/:code', getTripByCode);

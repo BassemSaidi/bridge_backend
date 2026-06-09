@@ -4,10 +4,10 @@ const Account = require('../models/Account');
 
 // @desc    Create new colis
 // @route   POST /api/colis
-// @access   Private
+// @access   Private (or public for demande status)
 const createColis = async (req, res, next) => {
   try {
-    const { voyage_id, KgCo } = req.body;
+    const { voyage_id, KgCo, status } = req.body;
 
     // Check if voyage exists
     const voyage = await Voyage.findById(voyage_id);
@@ -18,22 +18,28 @@ const createColis = async (req, res, next) => {
       });
     }
 
-    // Check if user owns this voyage or is admin
-    const account = await Account.findByUserId(req.user.id);
-    if (voyage.account_id !== account.id && req.user.role !== 'ADMIN') {
-      return res.status(403).json({
-        success: false,
-        error: 'Not authorized to add colis to this voyage'
-      });
+    // If status is 'demande', allow public access without ownership check
+    if (status !== 'demande') {
+      // Check if user owns this voyage or is admin
+      const account = await Account.findByUserId(req.user.id);
+      if (voyage.account_id !== account.id && req.user.role !== 'ADMIN') {
+        return res.status(403).json({
+          success: false,
+          error: 'Not authorized to add colis to this voyage'
+        });
+      }
+
+      // Calculate prixTotale from weight * pricePerKg
+      const weight = parseFloat(KgCo) || 0;
+      const pricePerKg = parseFloat(account.pricePerKg) || 0;
+      const prixTotale = (weight * pricePerKg).toFixed(2);
+
+      // Add calculated prixTotale to request body
+      req.body.prixTotale = prixTotale;
+    } else {
+      // For demande status, set prixTotale to 0 (will be calculated on acceptance)
+      req.body.prixTotale = 0;
     }
-
-    // Calculate prixTotale from weight * pricePerKg
-    const weight = parseFloat(KgCo) || 0;
-    const pricePerKg = parseFloat(account.pricePerKg) || 0;
-    const prixTotale = (weight * pricePerKg).toFixed(2);
-
-    // Add calculated prixTotale to request body
-    req.body.prixTotale = prixTotale;
 
     const colisId = await Colis.create(req.body);
     const colis = await Colis.findById(colisId);
@@ -332,6 +338,188 @@ const getColisStats = async (req, res, next) => {
   }
 };
 
+// @desc    Accept package request
+// @route   PATCH /api/colis/:id/accept
+// @access   Private (TRANSPORTEUR or ADMIN)
+const acceptColisRequest = async (req, res, next) => {
+  try {
+    const colis = await Colis.findById(req.params.id);
+
+    if (!colis) {
+      return res.status(404).json({
+        success: false,
+        error: 'Colis not found'
+      });
+    }
+
+    // Check if user owns this colis or is admin
+    const voyage = await Voyage.findById(colis.voyage_id);
+    const account = await Account.findByUserId(req.user.id);
+    
+    if (voyage.account_id !== account.id && req.user.role !== 'ADMIN') {
+      return res.status(403).json({
+        success: false,
+        error: 'Not authorized to accept this request'
+      });
+    }
+
+    // Update status to accepted and calculate price
+    const weight = parseFloat(colis.KgCo) || 0;
+    const pricePerKg = parseFloat(account.pricePerKg) || 0;
+    const prixTotale = (weight * pricePerKg).toFixed(2);
+
+    const updated = await Colis.updateStatus(req.params.id, 'accepted');
+    
+    if (updated) {
+      // Update the price
+      await Colis.updatePrice(req.params.id, prixTotale);
+      
+      res.status(200).json({
+        success: true,
+        data: { id: req.params.id, status: 'accepted', prixTotale }
+      });
+    } else {
+      res.status(400).json({
+        success: false,
+        error: 'Failed to accept request'
+      });
+    }
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Refuse package request
+// @route   PATCH /api/colis/:id/refuse
+// @access   Private (TRANSPORTEUR or ADMIN)
+const refuseColisRequest = async (req, res, next) => {
+  try {
+    const colis = await Colis.findById(req.params.id);
+
+    if (!colis) {
+      return res.status(404).json({
+        success: false,
+        error: 'Colis not found'
+      });
+    }
+
+    // Check if user owns this colis or is admin
+    const voyage = await Voyage.findById(colis.voyage_id);
+    const account = await Account.findByUserId(req.user.id);
+    
+    if (voyage.account_id !== account.id && req.user.role !== 'ADMIN') {
+      return res.status(403).json({
+        success: false,
+        error: 'Not authorized to refuse this request'
+      });
+    }
+
+    const updated = await Colis.updateStatus(req.params.id, 'refused');
+    
+    if (updated) {
+      res.status(200).json({
+        success: true,
+        data: { id: req.params.id, status: 'refused' }
+      });
+    } else {
+      res.status(400).json({
+        success: false,
+        error: 'Failed to refuse request'
+      });
+    }
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Get pending requests count for transporter
+// @route   GET /api/colis/pending-count
+// @access   Private (TRANSPORTEUR or ADMIN)
+const getPendingRequestsCount = async (req, res, next) => {
+  try {
+    const account = await Account.findByUserId(req.user.id);
+    if (!account) {
+      return res.status(400).json({
+        success: false,
+        error: 'Account not found'
+      });
+    }
+
+    // Get all voyages for this account
+    const voyages = await Voyage.findByAccountId(account.id);
+    const voyageIds = voyages.map(v => v.idV);
+    
+    if (voyageIds.length === 0) {
+      return res.status(200).json({
+        success: true,
+        data: { count: 0 }
+      });
+    }
+
+    // Count pending requests for these voyages
+    const db = require('../config/database');
+    const placeholders = voyageIds.map(() => '?').join(',');
+    const [rows] = await db.execute(
+      `SELECT COUNT(*) as count FROM colis WHERE voyage_id IN (${placeholders}) AND status = 'demande'`,
+      voyageIds
+    );
+
+    res.status(200).json({
+      success: true,
+      data: { count: rows[0].count }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Get all pending requests with trip details for transporter
+// @route   GET /api/colis/pending-requests
+// @access   Private (TRANSPORTEUR or ADMIN)
+const getPendingRequests = async (req, res, next) => {
+  try {
+    const account = await Account.findByUserId(req.user.id);
+    if (!account) {
+      return res.status(400).json({
+        success: false,
+        error: 'Account not found'
+      });
+    }
+
+    // Get all voyages for this account
+    const voyages = await Voyage.findByAccountId(account.id);
+    const voyageIds = voyages.map(v => v.idV);
+    
+    if (voyageIds.length === 0) {
+      return res.status(200).json({
+        success: true,
+        data: []
+      });
+    }
+
+    // Get pending requests for these voyages with trip details
+    const db = require('../config/database');
+    const placeholders = voyageIds.map(() => '?').join(',');
+    const [rows] = await db.execute(
+      `SELECT c.*, v.PaysD, v.PaysF, v.DateD, v.DateF, v.codeT, v.status as voyage_status, a.nom as transporteur_name 
+       FROM colis c 
+       JOIN trips v ON c.voyage_id = v.idV 
+       JOIN account a ON v.account_id = a.id 
+       WHERE c.voyage_id IN (${placeholders}) AND c.status = 'demande'
+       `,
+      voyageIds
+    );
+
+    res.status(200).json({
+      success: true,
+      count: rows.length,
+      data: rows
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   createColis,
   getAllColis,
@@ -339,5 +527,9 @@ module.exports = {
   updateColis,
   updatePaymentStatus,
   deleteColis,
-  getColisStats
+  getColisStats,
+  acceptColisRequest,
+  refuseColisRequest,
+  getPendingRequestsCount,
+  getPendingRequests
 };

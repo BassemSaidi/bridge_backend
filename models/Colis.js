@@ -16,12 +16,13 @@ class Colis {
       KgCo, 
       nb_box,
       prixTotale, 
-      payementStatus = 'TO PAY'
+      payementStatus = 'TO PAY',
+      status = 'accepted'
     } = colisData;
 
     const [result] = await db.execute(
-      `INSERT INTO Colis (voyage_id, nomS, TelS, adresseS, detailsS, nomR, TelR, adresseR, detailsR, KgCo, nb_box, prixTotale, payementStatus) 
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO Colis (voyage_id, nomS, TelS, adresseS, detailsS, nomR, TelR, adresseR, detailsR, KgCo, nb_box, prixTotale, payementStatus, status) 
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         voyage_id,
         nomS,
@@ -36,6 +37,7 @@ class Colis {
         nb_box,
         prixTotale,
         payementStatus,
+        status,
       ]
     );
 
@@ -79,8 +81,7 @@ class Colis {
       `SELECT c.*, v.PaysD, v.PaysF, v.DateD, a.nom as transporteur_name 
        FROM colis c 
        JOIN trips v ON c.voyage_id = v.idV 
-       JOIN account a ON v.account_id = a.id 
-       ORDER BY c.created_at DESC`
+       JOIN account a ON v.account_id = a.id `
     );
     
     // Return colis data without photoCo parsing
@@ -95,7 +96,7 @@ class Colis {
        JOIN trips v ON c.voyage_id = v.idV 
        JOIN account a ON v.account_id = a.id 
        WHERE c.payementStatus = ? 
-       ORDER BY c.created_at DESC`,
+      `,
       [payementStatus]
     );
     
@@ -201,6 +202,24 @@ class Colis {
     return result.affectedRows > 0;
   }
 
+  // Update status
+  static async updateStatus(idCo, status) {
+    const [result] = await db.execute(
+      'UPDATE Colis SET status = ? WHERE idCo = ?',
+      [status, idCo]
+    );
+    return result.affectedRows > 0;
+  }
+
+  // Update price
+  static async updatePrice(idCo, prixTotale) {
+    const [result] = await db.execute(
+      'UPDATE Colis SET prixTotale = ? WHERE idCo = ?',
+      [prixTotale, idCo]
+    );
+    return result.affectedRows > 0;
+  }
+
   // Delete colis
   static async delete(idCo) {
     const [result] = await db.execute(
@@ -240,7 +259,7 @@ class Colis {
        JOIN trips v ON c.voyage_id = v.idV 
        JOIN account a ON v.account_id = a.id 
        WHERE c.nomS LIKE ? OR c.nomR LIKE ? OR c.TelS LIKE ? OR c.TelR LIKE ?
-       ORDER BY c.created_at DESC`,
+      `,
       [`%${searchTerm}%`, `%${searchTerm}%`, `%${searchTerm}%`, `%${searchTerm}%`]
     );
     
