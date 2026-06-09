@@ -1,11 +1,11 @@
 const express = require('express');
-const { 
-  createColis, 
-  getAllColis, 
-  getColisById, 
-  updateColis, 
-  updatePaymentStatus, 
-  deleteColis, 
+const {
+  createColis,
+  getAllColis,
+  getColisById,
+  updateColis,
+  updatePaymentStatus,
+  deleteColis,
   getColisStats,
   acceptColisRequest,
   refuseColisRequest,
@@ -17,7 +17,7 @@ const { protect, authorize } = require('../middleware/auth');
 const router = express.Router();
 
 // Routes
-router.post('/', createColis); // Public for demande status, protected for others
+router.post('/', protect, createColis);
 router.get('/', protect, getAllColis);
 router.get('/stats', protect, getColisStats);
 router.get('/pending-count', protect, getPendingRequestsCount);
