@@ -289,6 +289,23 @@ const getVoyageByCode = async (req, res, next) => {
   }
 };
 
+// @desc    Get voyages by account ID
+// @route   GET /api/voyages/account/:accountId
+// @access   Public (for public profiles)
+const getVoyagesByAccountId = async (req, res, next) => {
+  try {
+    const voyages = await Voyage.findByAccountId(req.params.accountId);
+
+    res.status(200).json({
+      success: true,
+      count: voyages.length,
+      data: voyages
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 // @desc    Start voyage
 // @route   POST /api/voyages/:id/start
 // @access   Private (Owner or ADMIN)
@@ -422,5 +439,6 @@ module.exports = {
   getVoyageStats,
   startVoyage,
   advanceVoyage,
-  getVoyageByCode
+  getVoyageByCode,
+  getVoyagesByAccountId
 };

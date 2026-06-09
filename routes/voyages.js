@@ -1,22 +1,24 @@
 const express = require('express');
-const { 
-  createVoyage, 
-  getAllVoyages, 
-  getVoyageById, 
-  updateVoyage, 
-  updateVoyageStatus, 
-  deleteVoyage, 
+const {
+  createVoyage,
+  getAllVoyages,
+  getVoyageById,
+  updateVoyage,
+  updateVoyageStatus,
+  deleteVoyage,
   getVoyageStats,
   startVoyage,
   advanceVoyage,
-  getVoyageByCode
+  getVoyageByCode,
+  getVoyagesByAccountId
 } = require('../controllers/voyageController');
 const { protect, authorize } = require('../middleware/auth');
 
 const router = express.Router();
 
-// Public route for tracking (no auth required)
+// Public routes (no auth required)
 router.get('/by-code/:code', getVoyageByCode);
+router.get('/account/:accountId', getVoyagesByAccountId);
 
 // Apply protection to all other routes
 router.use(protect);
