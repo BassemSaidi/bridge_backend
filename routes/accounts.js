@@ -14,13 +14,10 @@ const { protect, authorize } = require('../middleware/auth');
 
 const router = express.Router();
 
-// Public route for getting account by ID (for public profiles)
-router.get('/:id', getAccountById);
-
-// Apply protection to all other routes
+// Apply protection to all routes
 router.use(protect);
 
-// Routes
+// Routes - /me must come before /:id to avoid route matching issues
 router.post('/', authorize('TRANSPORTEUR', 'ADMIN'), createAccount);
 router.get('/', authorize('ADMIN'), getAllAccounts);
 router.get('/me', getMyAccount);

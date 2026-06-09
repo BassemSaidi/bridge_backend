@@ -23,15 +23,15 @@ const getPublicAccount = async (req, res, next) => {
     const publicAccount = {
       id: account.id,
       nom: account.nom,
-      Tel1: account.Tel1,
-      Tel2W: account.Tel2W,
+      tel1: account.tel1,
+      tel2w: account.tel2w,
       voiture: account.voiture,
-      Bio: account.Bio,
-      paysTrajet: account.paysTrajet,
+      bio: account.bio,
+      paystrajet: account.paystrajet,
       guide: account.guide,
       interdits: account.interdits,
       img: account.img,
-      pricePerKg: account.pricePerKg
+      priceperkg: account.priceperkg
     };
 
     res.status(200).json({
